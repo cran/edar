@@ -1,9 +1,9 @@
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Filename : init.R
+# Filename : func_all.R
 # Use      : Convenient functions for EDA
 # Author   : Tomas Sou
 # Created  : 2025-08-29
-# Updated  : 2025-10-24
+# Updated  : 2025-11-13
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Notes
 # na
@@ -11,31 +11,46 @@
 # Updates
 # na
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Functions
+# Reexports
+
+#' @export
+dplyr::mutate
+#' @export
+dplyr::filter
+#' @export
+dplyr::select
+#' @export
+dplyr::where
+#' @export
+dplyr::across
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' Copy files and rename with date
 #'
-#' Copy files to destination and add date to file name with a tag as desired.
+#' Copy files to destination and rename with date and a tag as desired.
 #'
-#' @param fpath `<chr>` A vector of file paths of the source files to copy.
+#' @param ... `<chr>` A vector of file paths of the source files to copy and rename.
+#' @param des `<chr>` Destination folder. "." to rename files at the current location.
 #' @param tag `<chr>` Tag to the filename.
-#' @param des `<chr>` Destination folder.
+#' @param td `<lgl>` `TRUE` to add today (yymmdd) to the filename.
 #' @returns A logical vector indicating if the operation succeeded for each of the files.
 #' @export
 #' @examples
 #' \dontrun{
 #' # Copy a file to home directory
-#' tmp <- tempdir()
-#' fc(c("f1.R","f2.R"),des=tmp)
+#' tmp = tempdir()
+#' fc("f1.R","f2.R",des=tmp)
 #' }
-fc = function(fpath,des="",tag="-"){
+fc = function(...,des="",tag="",td=TRUE){
   # Copy
+  fpath = c(...)
   fname = basename(fpath)
   fstem = tools::file_path_sans_ext(fname)
   fext = tools::file_ext(fname)
   file.copy(fpath,des,overwrite=TRUE)
   # Rename
-  today = format(Sys.time(),"%y%m%d")
+  today = NULL
+  if(td) today = paste0("-",format(Sys.time(),"%y%m%d"))
   fname_to = paste0(fstem,tag,today,".",fext)
   fpath1 = file.path(des,fname)
   fpath2 = file.path(des,fname_to)
@@ -43,8 +58,6 @@ fc = function(fpath,des="",tag="-"){
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# library(flextable)
-
 #' flextable wrapper
 #'
 #' Sugar function for default flextable output.
@@ -82,14 +95,18 @@ ft = function(d, fnote=NULL, ttl=NULL, sig=8, dig=2, src=0, omit=""){
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#' flextable default
+#' flextable defaults
 #'
 #' Sugar function to set flextable defaults.
 #' The arguments are passed to [flextable::set_flextable_defaults()].
 #'
+#' @param show `<lgl>` `TRUE` to show values after the update.
 #' @param font `<chr>` Font family - for `font.family`.
 #' @param fsize `<int>` Font size (in point) - for `font.size`.
 #' @param pad `<int>` Padding space around text - for `padding`.
+#' @param na `<chr>` A value to display instead of NA - for `na_str`
+#' @param nan `<chr>` A value to display instead of NaN - for `nan_str`
+#' @param ... Additional arguments to pass to [flextable::set_flextable_defaults()]
 #' @returns A list containing previous default values.
 #' @seealso [flextable::set_flextable_defaults()].
 #' @export
@@ -97,171 +114,37 @@ ft = function(d, fnote=NULL, ttl=NULL, sig=8, dig=2, src=0, omit=""){
 #' \dontrun{
 #' ft_def()
 #' }
-ft_def = function(font="Calibri Light", fsize=10, pad=3){
-  flextable::set_flextable_defaults(
+ft_def = function(show=FALSE, font="Calibri Light", fsize=10, pad=3, na="", nan="", ...){
+  out = flextable::set_flextable_defaults(
     font.family = font,
     font.size = fsize,
     padding = pad,
-    na_str = "",
-    nan_str = ""
+    na_str = na,
+    nan_str = nan,
+    ...
   )
+  if(show) print(flextable::get_flextable_defaults())
+  invisible(out)
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#' Box plot wrapper for discrete covariates
+#' Generate hex colour codes
 #'
-#' Sugar function to generate box plots for a chosen variable by discrete covariates.
-#' Orientation will follow the axis of the discrete variables.
-#' Numeric variables will be dropped, except the chosen variable to plot.
-#'
-#' @param d `<dfr>` A data frame.
-#' @param var `<var>` A variable to plot as unquoted name.
-#' @param cats `<var>` Optional. A vector of selected discrete variables as unquoted names.
-#' @param ... List of arguments to pass to [ggplot2::geom_boxplot].
-#' @returns A ggplot object of a box plot.
-#' @export
-#' @examples
-#' iris |> ggcov_box(Sepal.Length)
-#' sleep |> ggcov_box(extra,group)
-#' sleep |> ggcov_box(extra,"group") # character for `cats` will not break
-#' d <- mtcars |> dplyr::mutate(cyl=factor(cyl),gear=factor(gear),vs=factor(vs))
-#' d |> ggcov_box(mpg)
-#' d |> ggcov_box(mpg,c("cyl","vs"))
-ggcov_box = function(d, var, cats, ...){
-  if(missing(var)) stop("Specify a variable to plot!")
-  if(!missing(cats)) d = d |> dplyr::select({{var}},{{cats}})
-  d = d |> tidyr::pivot_longer(
-    cols = !(dplyr::where(~is.numeric(.x)) | {{var}}),
-    names_to = "name",
-    values_to = "levels"
-  )
-  nsub = d |> dplyr::distinct() |> nrow()
-  d |>
-    ggplot2::ggplot()+
-    ggplot2::aes(x=levels,y={{var}})+
-    ggplot2::geom_boxplot(...)+
-    ggplot2::geom_jitter(width=0.2,alpha=0.1)+
-    ggplot2::facet_wrap(~name,scales="free")+
-    ggplot2::labs(caption = paste0("n=",nsub))
-}
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-utils::globalVariables(c("value"))
-
-#' Histogram wrapper for continuous covariates
-#'
-#' Sugar function to generate histograms for numeric variables in a dataset.
-#' Non-numeric variables will be dropped.
-#'
-#' @param d `<dfr>` A data frame.
-#' @param cols `<var>` Optional. A vector of selected columns as unquoted names.
-#' @param bins `<int>` Number of bins.
-#' @param ... Other arguments to pass to [ggplot2::geom_histogram].
-#' @returns A ggplot object with histograms of numeric variables.
-#' @export
-#' @examples
-#' iris |> ggcov_hist()
-#' iris |> ggcov_hist(c(Sepal.Width,Sepal.Length))
-ggcov_hist = function(d, cols, bins=30, ...){
-  if(!missing(cols)) d = d |> dplyr::select({{cols}})
-  nsub = d |> dplyr::distinct() |> nrow()
-  catv = d |> dplyr::select(dplyr::where(~!is.numeric(.x)))
-  message("Dropped: ", paste(names(catv), collapse=" "))
-  d = d |> tidyr::pivot_longer(cols=dplyr::where(is.numeric),names_to="name",values_to="value")
-  d |>
-    ggplot2::ggplot()+
-    ggplot2::aes(x=value)+
-    ggplot2::geom_histogram(bins=bins, ...)+
-    ggplot2::facet_wrap(~name,scales="free")+
-    ggplot2::labs(caption=paste0("n=",nsub))
-}
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#' Violin plot wrapper for discrete covariates
-#'
-#' Sugar function to generate violin plots for a chosen variable by discrete covariates.
-#' Orientation will follow the axis of the discrete variables.
-#' Numeric variables will be dropped, except the chosen variable to plot.
-#'
-#' @param d `<dfr>` A data frame.
-#' @param var `<var>` A variable to plot as unquoted name.
-#' @param cats `<var>` Optional. A vector of selected discrete variables as unquoted names.
-#' @param ... List of arguments to pass to [ggplot2::geom_violin].
-#' @returns A ggplot object with violin plots.
-#' @export
-#' @examples
-#' iris |> ggcov_violin(Sepal.Length)
-#' sleep |> ggcov_violin(extra,group)
-#' sleep |> ggcov_box(extra,"group") # character for `cats` will not break
-#' d <- mtcars |> dplyr::mutate(cyl=factor(cyl),gear=factor(gear),vs=factor(vs))
-#' d |> ggcov_violin(mpg)
-#' d |> ggcov_violin(mpg,c("cyl","vs"))
-ggcov_violin = function(d, var, cats, ...){
-  if(missing(var)) stop("Specify a variable to plot!")
-  if(!missing(cats)) d = d |> dplyr::select({{var}},{{cats}})
-  nsub = d |> dplyr::distinct() |> nrow()
-  d = d |> tidyr::pivot_longer(
-    cols = !(dplyr::where(~is.numeric(.x)) | {{var}}),
-    names_to = "name",
-    values_to = "levels"
-  )
-  d |>
-    ggplot2::ggplot()+
-    ggplot2::aes(x=levels,y={{var}})+
-    ggplot2::geom_violin(trim=FALSE,quantile.linetype=2,draw_quantiles=c(0.25,0.5,0.75))+
-    ggplot2::geom_jitter(width=0.2,alpha=0.1)+
-    ggplot2::facet_wrap(~name,scales="free")+
-    ggplot2::labs(caption=paste0("n=",nsub))
-}
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# library(patchwork)
-
-#' Add source label to a ggplot object
-#'
-#' Generate and add a source label with file path and run time to a ggplot object.
-#'
-#' @param plt A ggplot object.
-#' @param span `<num>` Number of lines: either 1 or 2.
-#' @param size `<num>` Text size.
-#' @param col `<chr>` Colour of the text.
-#' @param lab `<chr>` Custom label to use instead of the default.
-#' @param omit `<chr>` Text to omit from the label.
-#' @returns A ggplot object with the added label.
-#' @export
-#' @examples
-#' # A source label can be easily added to a ggplot object.
-#' library(ggplot2)
-#' p = ggplot(mtcars, aes(mpg, wt)) + geom_point()
-#' p |> ggsrc()
-#' p |> ggsrc(lab="My label")
-ggsrc = function(plt,span=2,size=8,col="grey55",lab=NULL,omit=""){
-  labsrc = label_src(span) |> gsub(omit,"",x=_)
-  if(!is.null(lab)) labsrc = lab
-  out = patchwork::wrap_elements(plt) +
-    patchwork::plot_annotation(
-      caption = labsrc,
-      theme = ggplot2::theme(plot.caption = ggplot2::element_text(colour=col,size=size))
-    )
-  return(out)
-}
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#' Generate hex colour codes for plotting
-#'
-#' Create a vector of hex colour codes for the desired number of colours.
-#' Colours are generated by splitting hue in the range `[0,360]` in [grDevices::hcl].
+#' Generate a vector of hex colour codes for the desired number of colours.
+#' Colours are generated by evenly splitting hue in the range `[0,360]`
+#' in the HCL colour space using [grDevices::hcl].
+#' The output is meant to follow the default colours used in [ggplot2].
 #'
 #' @param n `<int>` Number of colours to output.
 #' @param show `<lgl>` `TRUE` to show the output colours.
-#' @returns Hex colour codes that can be used for plotting.
+#' @returns A vector of hex colour codes that can be used for plotting.
 #' @export
 #' @examples
-#' hcln(6,FALSE)
-#' hcln(4,TRUE)
-hcln = function(n,show=FALSE){
+#' hexn(6,FALSE)
+#' hexn(4,TRUE)
+hexn = function(n,show=FALSE){
   hues = seq(15, 375, length=n+1)
-  out = hcl(h=hues, c=100, l=65)[1:n]
+  out = grDevices::hcl(h=hues, c=100, l=65)[1:n]
   if(show) scales::show_col(out)
   return(out)
 }
@@ -278,7 +161,7 @@ hcln = function(n,show=FALSE){
 #' @param dig `<int>` Number of decimal places to display.
 #' @param src  `<int>` Either 1 or 2 to add source label over 1 or 2 lines.
 #' @param omit `<chr>` Text to omit from the source label.
-#' @returns A kable object
+#' @returns A kable object.
 #' @export
 #' @examples
 #' mtcars |> head() |> kb()
@@ -300,22 +183,25 @@ kb = function(d, fnote=NULL, cap=NULL, sig=8, dig=2, src=0, omit=""){
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#' Generate source label
+#' Generate source file label
 #'
-#' Generate a source label with file path and run time.
-#' In interactive sessions, the function uses `rstudioapi` to get the file path.
-#' It is designed to work in a script file in RStudio when running interactively.
+#' Generate a label with the current source file path and run time,
+#' assuming that the source file is in the current working directory.
+#' In interactive sessions, the function is designed to work in a script file in RStudio
+#' and uses `rstudioapi` to get the file path.
 #' It will return empty if run in the console directly.
 #'
 #' @param span `<int>` Number of lines: either 1 or 2.
 #' @param omit `<chr>` Text to omit from the label.
 #' @param tz `<lgl>` `FALSE` to exclude time stamp.
+#' @param fname `<lgl>` `TRUE` to return the file name only.
 #' @returns A label showing the source file path with a time stamp.
 #' @export
 #' @examples
-#' label_src(1)
+#' label_src()
 #' label_src(tz=FALSE)
-label_src = function(span=2,omit="",tz=TRUE){
+#' label_src(fname=TRUE)
+label_src = function(span=2,omit="",tz=TRUE,fname=FALSE){
   loc_src = getwd()
   if(interactive()) loc_src = rstudioapi::getActiveDocumentContext()$path |> dirname()
   fname_src = knitr::current_input() |> gsub(".rmarkdown",".qmd",x=_)
@@ -327,6 +213,7 @@ label_src = function(span=2,omit="",tz=TRUE){
   lab2 = paste0("Source:",loc_src,"/\n",fname_src,labtz)
   out = lab1
   if(span==2) out = lab2
+  if(fname) out = fname_src
   out = out |> gsub(omit,"",x=_)
   return(out)
 }
@@ -334,7 +221,7 @@ label_src = function(span=2,omit="",tz=TRUE){
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' Generate time stamp label
 #'
-#' Generate a time stamp label of the current time.
+#' Generate a label with a time stamp indicating the run time.
 #'
 #' @param omit `<chr>` Text to omit from the label.
 #' @returns A label with time stamp.
@@ -353,23 +240,23 @@ label_tz = function(omit=""){
 #' Non-numeric variables will be dropped.
 #'
 #' @param d `<dfr>` A data frame.
-#' @param cols `<var>` Optional. Select a vector of variables as unquoted names.
+#' @param cols `<var>` Optional. Columns to summarise as unquoted names.
 #' @param ... `<var>` Optional. Columns to group by as unquoted names.
 #' @param pct `<num>` A vector of two indicating the percentiles to compute.
 #' @param xname  `<chr>` Characters to omit in output column names.
 #' @returns A data frame of summarised variables.
 #' @export
 #' @examples
-#' iris |> summ_by()
-#' iris |> summ_by(pct=c(0.1,0.9))
-#' d <- mtcars |> dplyr::mutate(vs=factor(vs), am=factor(am))
+#' d = mtcars |> dplyr::mutate(vs=factor(vs), am=factor(am))
+#' d |> summ_by()
+#' d |> summ_by(pct=c(0.1,0.9))
 #' d |> summ_by(mpg)
 #' d |> summ_by(mpg,vs)
 #' d |> summ_by(mpg,vs,am)
 #' d |> summ_by(c(mpg,disp))
 #' d |> summ_by(c(mpg,disp),vs)
 #' d |> summ_by(c(mpg,disp),vs,xname="mpg_")
-#' # grouping without column selection is possible but rarely useful in large dataset
+#' # Grouping without column selection is possible but rarely useful in large dataset
 #' d |> summ_by(,vs)
 summ_by = function(d, cols, ..., pct=c(0.25,0.75), xname=""){
   if(!missing(cols)) d = d |> dplyr::select(...,{{cols}})
@@ -381,6 +268,7 @@ summ_by = function(d, cols, ..., pct=c(0.25,0.75), xname=""){
     dplyr::group_by(dplyr::pick(dplyr::contains("name")))
   if(is.null(gps)){
     catv = d |> dplyr::select(dplyr::where(~!is.numeric(.x)))
+    message("NB: Non-numeric variables are dropped.")
     message("Dropped: ", paste(names(catv), collapse=" "))
   }
   if(is.null(gps) & xname=="") xname = paste0(names(d.),"_",collapse="|")
@@ -413,19 +301,25 @@ summ_by = function(d, cols, ..., pct=c(0.25,0.75), xname=""){
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' Summarise categorical variables
 #'
-#' Summarise categorical variables. Numeric variables will be dropped.
+#' Summarise all categorical variables.
+#' Numeric variables will be dropped.
 #'
 #' @param d A data frame.
-#' @param pos `<chr/int>` (name or position) Optional. Choose a variable to return.
-#' @returns A list containing summaries for each categorical variables.
+#' @param ... `<var>` Optional. Columns to summarise.
+#' @param var `<var/int>` (name or index) Optional. A variable to extract as a data frame.
+#' @returns A list containing summaries for all categorical variables or
+#'   a data frame showing the summary of a selected variable.
 #' @export
 #' @examples
-#' iris |> summ_cat()
-#' sleep |> summ_cat()
-#' sleep |> summ_cat("group")
-#' sleep |> summ_cat(1)
-summ_cat = function(d,pos){
+#' d = mtcars |> dplyr::mutate(dplyr::across(c(cyl,vs,am,gear,carb),factor))
+#' d |> summ_cat()
+#' d |> summ_cat(cyl,vs)
+#' d |> summ_cat(var=cyl)
+#' d |> summ_cat(var=1)
+summ_cat = function(d,...,var){
   x = d |> dplyr::select(dplyr::where(is.numeric))
+  if(!missing(...)) d = d |> dplyr::select(...)
+  message("NB: Numeric variables are dropped.")
   message("Dropped: ", paste(names(x), collapse=" "))
   out = d |>
     dplyr::select(-dplyr::where(is.numeric)) |>
@@ -434,6 +328,6 @@ summ_cat = function(d,pos){
   for (i in seq_along(out)){
     out[[i]] = out[[i]] |> dplyr::rename(!!names(out[i]):=1)
   }
-  if(!missing(pos)) out = out |> magrittr::extract2(pos)
+  if(!missing(var)) out = out |> listr::list_extract({{var}})
   return(out)
 }

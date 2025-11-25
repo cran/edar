@@ -2,10 +2,11 @@
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @importFrom dplyr across
 #' @importFrom dplyr filter
+#' @importFrom dplyr mutate
 #' @importFrom dplyr select
 #' @importFrom dplyr where
-#' @importFrom grDevices hcl
 #' @importFrom magrittr %>%
 #' @importFrom magrittr extract
 #' @importFrom magrittr extract2
