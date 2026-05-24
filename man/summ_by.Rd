@@ -4,7 +4,15 @@
 \alias{summ_by}
 \title{Summarise continuous variables by group}
 \usage{
-summ_by(d, cols, ..., pct = c(0.25, 0.75), xname = "")
+summ_by(
+  d,
+  cols,
+  ...,
+  pct = c(0.25, 0.75),
+  geo = FALSE,
+  xname = "",
+  view = FALSE
+)
 }
 \arguments{
 \item{d}{\verb{<dfr>} A data frame.}
@@ -15,7 +23,11 @@ summ_by(d, cols, ..., pct = c(0.25, 0.75), xname = "")
 
 \item{pct}{\verb{<num>} A vector of two indicating the percentiles to compute.}
 
+\item{geo}{\verb{<lgl>} TRUE to add geometric mean and standard devaition.}
+
 \item{xname}{\verb{<chr>} Characters to omit in output column names.}
+
+\item{view}{\verb{<lgl>} TRUE to print output as flextable.}
 }
 \value{
 A data frame of summarised variables.
@@ -27,6 +39,7 @@ Non-numeric variables will be dropped.
 \examples{
 d = mtcars |> dplyr::mutate(vs=factor(vs), am=factor(am))
 d |> summ_by()
+d |> summ_by(geo=TRUE)
 d |> summ_by(pct=c(0.1,0.9))
 d |> summ_by(mpg)
 d |> summ_by(mpg,vs)

@@ -8,9 +8,9 @@
 [![R-CMD-check](https://github.com/soutomas/edar/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/soutomas/edar/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/edar)](https://CRAN.R-project.org/package=edar)
+[![](http://cranlogs.r-pkg.org/badges/grand-total/edar)](https://cran.r-project.org/package=edar)
 [![](http://cranlogs.r-pkg.org/badges/edar)](https://cran.r-project.org/package=edar)
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- [![](http://cranlogs.r-pkg.org/badges/last-week/edar)](https://cran.r-project.org/package=edar) -->
 <!-- badges: end -->
 
 The goal of edar is to provide some convenient functions to facilitate
@@ -19,31 +19,12 @@ common tasks in exploratory data analysis.
 ## Citation
 
 Sou T (2025). *edar: Convenient Functions for Exploratory Data
-Analysis*. R package version 0.0.5.9000,
-<https://github.com/soutomas/edar>.
-
-``` r
-citation("edar")
-#> To cite package 'edar' in publications use:
-#> 
-#>   Sou T (2025). _edar: Convenient Functions for Exploratory Data
-#>   Analysis_. R package version 0.0.5.9000, https://github.com/soutomas/edar/,
-#>   <https://soutomas.github.io/edar/>.
-#> 
-#> A BibTeX entry for LaTeX users is
-#> 
-#>   @Manual{,
-#>     title = {edar: Convenient Functions for Exploratory Data Analysis},
-#>     author = {Tomas Sou},
-#>     note = {R package version 0.0.5.9000, https://github.com/soutomas/edar/},
-#>     url = {https://soutomas.github.io/edar/},
-#>   }
-```
+Analysis*. R package version 0.0.6, <https://github.com/soutomas/edar>.
 
 ## Installation
 
 ``` r
-# From CRAN 
+# From CRAN - for the latest CRAN release 
 install.packages("edar")
 
 # From GitHub - for the development version
@@ -143,20 +124,29 @@ dat |> summ_by(mpg,vs) |> ft()
 #> Adding missing grouping variables: `vs`
 ```
 
-<img src="man/figures/README-unnamed-chunk-4-1.png" width="70%" />
+<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="70%" />
 
 ### Visualisation
 
 Variables can be quickly visualised for exploratory graphical analysis.
 
 ``` r
+# Scatter plot showing correlation. 
+dat |> ggxy(hp,disp)
+#> `geom_smooth()` using formula = 'y ~ x'
+```
+
+<img src="man/figures/README-unnamed-chunk-4-1.png" alt="" width="70%" />
+
+``` r
+
 # Histograms of all continuous variables. 
 dat |> gghist()
 #> NB: Non-numeric variables are dropped.
 #> Dropped: cyl vs am gear carb
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="70%" />
+<img src="man/figures/README-unnamed-chunk-4-2.png" alt="" width="70%" />
 
 ``` r
 
@@ -166,7 +156,7 @@ dat |> ggbox(mpg)
 #> Dropped: disp hp drat wt qsec
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-2.png" width="70%" />
+<img src="man/figures/README-unnamed-chunk-4-3.png" alt="" width="70%" />
 
 ``` r
 
@@ -180,16 +170,15 @@ dat |> ggvio(mpg)
 #> ℹ Set `drop = FALSE` to consider such groups for position adjustment purposes.
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-3.png" width="70%" />
+<img src="man/figures/README-unnamed-chunk-4-4.png" alt="" width="70%" />
 
 ``` r
 
-# Scatter plot showing correlation. 
-dat |> ggxy(hp,disp)
-#> `geom_smooth()` using formula = 'y ~ x'
+# Time-profile plot by subject.
+Theoph |> ggtpp(Time, conc, id=Subject, xlab="Time [h]", ylab="Concentration [mg/L]")
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-4.png" width="70%" />
+<img src="man/figures/README-unnamed-chunk-4-5.png" alt="" width="70%" />
 
 ### Labels
 

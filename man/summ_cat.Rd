@@ -4,14 +4,16 @@
 \alias{summ_cat}
 \title{Summarise categorical variables}
 \usage{
-summ_cat(d, ..., var)
+summ_cat(d, ..., var, view = FALSE)
 }
 \arguments{
-\item{d}{A data frame.}
+\item{d}{\verb{<dfr>} A data frame.}
 
 \item{...}{\verb{<var>} Optional. Columns to summarise.}
 
 \item{var}{\verb{<var/int>} (name or index) Optional. A variable to extract as a data frame.}
+
+\item{view}{\verb{<lgl>} TRUE to show output as flextable.}
 }
 \value{
 A list containing summaries for all categorical variables or

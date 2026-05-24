@@ -3,7 +3,7 @@
 # Use      : Wrapper functions for ggplot2
 # Author   : Tomas Sou
 # Created  : 2025-10-25
-# Updated  : 2025-11-13
+# Updated  : 2026-04-01
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Notes
 # na
@@ -11,7 +11,10 @@
 # Updates
 # na
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Global
+
 utils::globalVariables(c("value","level"))
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' Box plot wrapper for categorical covariates
 #'
@@ -96,6 +99,30 @@ gghist = function(d, cols, bins=30, nsub=TRUE, ...){
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#' Save ggplot with output path
+#'
+#' @param plt A ggplot object.
+#' @param fpath `<chr>` File path to save output and add to label.
+#' @param lab `<chr>` Custom label to use instead of `fpath`.
+#' @param omit `<chr>` Text to omit from the label.
+#' @param ... Other arguments to pass to [ggplot2::ggsave()].
+#' @returns The file path of the output.
+#' @seealso [ggplot2::ggsave()]
+#' @export
+#' @examples
+#' \dontrun{
+#' fpath = "../output.png"
+#' iris |> gghist() |> ggout(fpath)
+#' }
+ggout = function(plt,fpath,lab="",omit="",...){
+  labout = paste0("Output:",fpath)
+  if(lab!="")  labout = lab
+  if(omit!="") labout = gsub(omit,"",labout)
+  p = plt |> ggsrc(lab=labout)
+  ggplot2::ggsave(fpath,p,...)
+  invisible(fpath)
+}
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' Add source file label to a ggplot object
 #'
 #' Add a label with the current source file path and run time to a ggplot object.
@@ -112,13 +139,17 @@ gghist = function(d, cols, bins=30, nsub=TRUE, ...){
 #' p = mtcars |> ggxy(mpg,hp)
 #' p |> ggsrc()
 #' p |> ggsrc(lab="My label")
-ggsrc = function(plt,span=2,size=8,col="grey55",lab=NULL,omit=""){
-  labsrc = label_src(span,omit)
+#' p |> ggsrc(lab="My label",omit="My ")
+ggsrc = function(plt,span=1,size=8,col="grey55",lab=NULL,omit=""){
+  labsrc = label_src(span)
   if(!is.null(lab)) labsrc = lab
+  labsrc = gsub(omit,"",labsrc)
   out = patchwork::wrap_elements(plt) +
     patchwork::plot_annotation(
       caption = labsrc,
-      theme = ggplot2::theme(plot.caption = ggplot2::element_text(colour=col,size=size))
+      theme = ggplot2::theme(
+        plot.caption = ggplot2::element_text(colour=col,size=size,hjust=0)
+      )
     )
   return(out)
 }
@@ -221,20 +252,20 @@ ggvio = function(d, var, cats, alpha=0.1, show=TRUE, nsub=TRUE, ...){
 #' XY scatter plot wrapper
 #'
 #' Create basic XY scatter plot for quick data exploration.
-#' Default to show Pearson correlation coefficient with p-value using [ggpubr::stat_cor].
+#' Default to show Pearson correlation coefficient with p-value using [ggpubr::stat_cor()].
 #' For more complex plots, it is recommended to use [ggplot2] directly.
 #'
 #' @param d `<dfr>` A data frame.
 #' @param x,y `<var>` Variables for x- and y-axis as unquoted names.
-#' @param ... Arguments to pass to [ggplot2::aes] for additional mapping.
+#' @param ... Arguments to pass to [ggplot2::aes()] for additional mapping.
 #' @param lm `<lgl>` `TRUE` to add regression line from linear model.
 #' @param se `<lgl>` `TRUE` to show standard error with the regression line.
 #' @param nsub `<lgl>` Show number of observations.
 #' @param cor `<lgl>` `TRUE` to show Pearson correlation coefficient with p-value.
-#' @param pv `<dbl>` Precision for the p-value, e.g., 0.001 to show 3 decimal places.
+#' @param pv `<dbl>` Precision of p-value, e.g., 0.001 to show 3 decimal places, `NULL` for no rounding.
 #' @param legend `<lgl>` `TRUE` to show legend.
-#' @param asp `<num>` For `aspect.ratio` in [ggplot2::theme].
-#' @seealso [ggpubr::stat_cor]
+#' @param asp `<num>` For `aspect.ratio` in [ggplot2::theme()].
+#' @seealso [ggpubr::stat_cor()]
 #' @returns A ggplot object.
 #' @export
 #' @examples
@@ -243,11 +274,11 @@ ggvio = function(d, var, cats, alpha=0.1, show=TRUE, nsub=TRUE, ...){
 #' mtcars |> ggxy(wt,hp,col=factor(gear),legend=FALSE)
 #' mtcars |> ggxy(wt,hp,col=factor(gear),pch=factor(am))
 #' mtcars |> ggxy(wt,hp,nsub=FALSE)
-#' mtcars |> ggxy(wt,hp,pv=0.001)
+#' mtcars |> ggxy(wt,hp,pv=NULL)
 #' mtcars |> ggxy(wt,hp,lm=FALSE)
 #' mtcars |> ggxy(wt,hp,se=FALSE)
 #' mtcars |> ggxy(wt,hp,cor=FALSE)
-ggxy = function(d,x,y,...,lm=TRUE,se=TRUE,cor=TRUE,pv=NULL,nsub=TRUE,legend=TRUE,asp=1){
+ggxy = function(d,x,y,...,lm=TRUE,se=TRUE,cor=TRUE,pv=0.001,nsub=TRUE,legend=TRUE,asp=1){
   nSub = NULL
   if(nsub) nSub = paste0("n=",nrow(d))
   p = d |>

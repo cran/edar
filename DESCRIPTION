@@ -1,7 +1,7 @@
 Package: edar
 Type: Package
 Title: Convenient Functions for Exploratory Data Analysis
-Version: 0.0.6
+Version: 0.0.7
 Description: A collection of convenient functions to facilitate common tasks in exploratory data analysis. 
           Some common tasks include generating summary tables of variables, 
           displaying tables as a 'flextable' or a 'kable' and visualising variables using 'ggplot2'. 
@@ -9,8 +9,7 @@ Description: A collection of convenient functions to facilitate common tasks in 
           for annotation in tables and plots. 
 License: MIT + file LICENSE
 Encoding: UTF-8
-URL: https://soutomas.github.io/edar/,
-        https://github.com/soutomas/edar/
+URL: https://github.com/soutomas/edar/
 BugReports: https://github.com/soutomas/edar/issues
 Authors@R: 
     person("Tomas", "Sou", , "tomas.sou@carexer.com", role = c("aut", "cre"),
@@ -18,13 +17,13 @@ Authors@R:
     )
 RoxygenNote: 7.3.3
 Imports: dplyr, flextable, ggplot2, ggpubr, grDevices, janitor,
-        kableExtra, knitr, listr, magrittr, patchwork, rlang,
-        rstudioapi, scales, tidyr, xgxr
+        kableExtra, knitr, magrittr, patchwork, purrr, rlang,
+        rstudioapi, scales, stats, tidyr, tidyselect, xgxr
 Suggests: gt
 Depends: R (>= 4.2.0)
 NeedsCompilation: no
-Packaged: 2025-11-25 21:21:56 UTC; tomas
+Packaged: 2026-05-24 15:59:28 UTC; tomas
 Author: Tomas Sou [aut, cre] (ORCID: <https://orcid.org/0000-0002-7570-5545>)
 Maintainer: Tomas Sou <tomas.sou@carexer.com>
 Repository: CRAN
-Date/Publication: 2025-11-25 22:02:06 UTC
+Date/Publication: 2026-05-24 16:10:02 UTC
