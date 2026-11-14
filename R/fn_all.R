@@ -3,7 +3,6 @@
 # Use      : Convenient functions for EDA
 # Author   : Tomas Sou
 # Created  : 2025-08-29
-# Updated  : 2026-05-04
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Notes
 # na
@@ -60,7 +59,7 @@ fc = function(...,des="",tag="",td=TRUE){
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #' flextable wrapper
 #'
-#' Sugar function for default flextable output.
+#' Wrapper function for default flextable output.
 #'
 #' @param d `<dfr>` A data frame.
 #' @param fnote `<chr>` Footnote.
@@ -68,6 +67,7 @@ fc = function(...,des="",tag="",td=TRUE){
 #' @param sig `<int>` Number of significant digits to compute.
 #' @param dig `<int>` Number of decimal places to display.
 #' @param src `<int>` Either 1 or 2 to add source label over 1 or 2 lines.
+#' @param tz `<lgl>` `FALSE` to exclude time stamp.
 #' @param omit `<chr>` Text to omit from the source label.
 #' @returns A flextable object.
 #' @export
@@ -77,21 +77,40 @@ fc = function(...,des="",tag="",td=TRUE){
 #' mtcars |> head() |> ft("Footnote")
 #' mtcars |> head() |> ft("Footnote",src=1)
 #' mtcars |> head() |> ft(sig=2,dig=1)
-ft = function(d, fnote=NULL, ttl=NULL, sig=8, dig=2, src=0, omit=""){
+ft = function(d, fnote=NULL, ttl=NULL, sig=3, dig=NULL, src=0, omit="",tz=TRUE){
   labsrc = NULL
-  if(src %in% c(1,2)) labsrc = paste0(label_src(src,omit))
-  if(!is.null(fnote)) labsrc = paste0("\n",labsrc)
-  lab = fnote
-  if(!is.null(labsrc)) lab = paste0(fnote,labsrc)
+  if(src %in% c(1,2)) labsrc = paste0(label_src(src,omit,tz))
   out = d |>
     dplyr::mutate(dplyr::across(dplyr::where(~ is.numeric(.x) && is.double(.x)), ~signif(.x,sig))) |>
     flextable::flextable() |>
-    flextable::colformat_double(digits=dig) |>
     flextable::autofit() |>
     flextable::add_header_lines(ttl) |>
-    flextable::add_footer_lines(lab) |>
+    flextable::add_footer_lines(fnote) |>
+    flextable::add_footer_lines(labsrc) |>
     flextable::align(align="left", part="all")
+  if(!is.null(dig)) out = out |> flextable::colformat_double(digits=dig)
   return(out)
+}
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#' Export flextable as MS Word table
+#'
+#' @param ft A flextable object.
+#' @param fpath `<chr>` File path to save output and add to label.
+#' @param omit `<chr>` Text to omit from the label.
+#' @returns A string containing the full name of the generated file.
+#' @export
+#' @examples
+#' \dontrun{
+#' fpath = "output.docx"
+#' mtcars |> head() |> ft() |> ftdoc(fpath)
+#' }
+ftdoc = function(ft,fpath,omit=""){
+  labout = paste0("Output:",gsub(omit,"",fpath))
+  ft |>
+    flextable::add_footer_lines(labout) |>
+    flextable::save_as_docx(path=fpath)
+  invisible(fpath)
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -136,8 +155,8 @@ ft_def = function(show=FALSE, font="Calibri Light", fsize=10, pad=3, na="", nan=
 #' @returns Geometric mean.
 #' @export
 #' @examples
-#' geo_mean(rlnorm(10))
-geo_mean = function(x){
+#' gmean(rlnorm(10))
+gmean = function(x){
   stopifnot(all(x>0))
   out = exp(mean(log(x),na.rm=TRUE))
   return(out)
@@ -152,8 +171,8 @@ geo_mean = function(x){
 #' @returns Geometric standard deviation
 #' @export
 #' @examples
-#' geo_sd(rlnorm(10))
-geo_sd = function(x){
+#' gsd(rlnorm(10))
+gsd = function(x){
   stopifnot(all(x>0))
   out = exp(stats::sd(log(x),na.rm=TRUE))
   return(out)
@@ -168,11 +187,31 @@ geo_sd = function(x){
 #' @returns Geometric coefficient of variation
 #' @export
 #' @examples
-#' geo_cv(rlnorm(10))
-geo_cv = function(x){
+#' gcv(rlnorm(10))
+gcv = function(x){
   stopifnot(all(x>0))
   s = stats::sd(log(x),na.rm=TRUE)
   out = 100 * sqrt(exp(s^2) - 1)
+  return(out)
+}
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#' Convert a gtsummary object to flextable and add a source label
+#'
+#' @param gtsum A gtsummary object.
+#' @param omit `<chr>` Text to omit from the label.
+#' @param span `<num>` Number of lines of source label: either 1 or 2.
+#' @returns A flextable object with source label.
+#' @export
+#' @examples
+#' library(gtsummary)
+#' mtcars |> tbl_summary() |> gtsrc()
+gtsrc = function(gtsum,omit="",span=1){
+  labsrc = paste0(label_src(span,omit))
+  out = gtsum |>
+    gtsummary::as_flex_table() |>
+    flextable::add_footer_lines(labsrc) |>
+    flextable::autofit()
   return(out)
 }
 
@@ -218,17 +257,21 @@ hexn = function(n,show=FALSE){
 #' mtcars |> head() |> kb("Footnote")
 #' mtcars |> head() |> kb("Footnote",src=1)
 #' mtcars |> head() |> kb(sig=2,dig=1)
-kb = function(d, fnote=NULL, cap=NULL, sig=8, dig=2, src=0, omit=""){
+kb = function(d, fnote=NULL, cap=NULL, sig=3, dig=NULL, src=0, omit=""){
   labsrc = NULL
   if(src %in% c(1,2)) labsrc = paste0(label_src(src,omit))
   if(!is.null(fnote)) labsrc = paste0("\n",labsrc)
   lab = fnote
   if(!is.null(labsrc)) lab = paste0(fnote,labsrc)
-  d |>
-    dplyr::mutate(dplyr::across(dplyr::where(~ is.numeric(.x) && is.double(.x)), ~signif(.x,sig))) |>
-    kableExtra::kbl(caption=cap,digits=dig) |>
+  d = d |>
+    dplyr::mutate(dplyr::across(dplyr::where(~ is.numeric(.x) && is.double(.x)), ~signif(.x,sig)))
+  if(!is.null(dig)) d = d |>
+    dplyr::mutate(dplyr::across(dplyr::where(~ is.numeric(.x) && is.double(.x)), ~round(.x,dig)))
+  out = d |>
+    kableExtra::kbl(caption=cap) |>
     kableExtra::kable_classic(full_width=FALSE) |>
     kableExtra::footnote(lab,general_title="")
+  return(out)
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -353,8 +396,8 @@ summ_by = function(d, cols, ..., pct=c(0.25,0.75), geo=FALSE, xname="", view=FAL
           nNA = ~sum(is.na(.x)),
           Mean = ~mean(.x, na.rm=TRUE),
           SD  = ~sd(.x, na.rm=TRUE),
-          GeoMean = ~geo_mean(.x),
-          GeoCV  = ~geo_cv(.x),
+          GeoMean = ~gmean(.x),
+          GeoCV  = ~gcv(.x),
           Min = ~min(.x, na.rm=TRUE),
           Plo = ~quantile(.x, pct[1], na.rm=TRUE),
           Median = ~median(.x, na.rm=TRUE),

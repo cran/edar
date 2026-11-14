@@ -3,7 +3,6 @@
 # Use      : Wrapper functions for ggplot2
 # Author   : Tomas Sou
 # Created  : 2025-10-25
-# Updated  : 2026-04-01
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Notes
 # na
@@ -133,6 +132,7 @@ ggout = function(plt,fpath,lab="",omit="",...){
 #' @param col `<chr>` Colour of the text.
 #' @param lab `<chr>` Custom label to use instead of the default.
 #' @param omit `<chr>` Text to omit from the label.
+#' @param tz `<lgl>` `FALSE` to exclude time stamp.
 #' @returns A ggplot object with the added label.
 #' @export
 #' @examples
@@ -140,8 +140,8 @@ ggout = function(plt,fpath,lab="",omit="",...){
 #' p |> ggsrc()
 #' p |> ggsrc(lab="My label")
 #' p |> ggsrc(lab="My label",omit="My ")
-ggsrc = function(plt,span=1,size=8,col="grey55",lab=NULL,omit=""){
-  labsrc = label_src(span)
+ggsrc = function(plt,span=1,size=8,col="grey55",lab=NULL,omit="",tz=TRUE){
+  labsrc = label_src(span,tz=tz)
   if(!is.null(lab)) labsrc = lab
   labsrc = gsub(omit,"",labsrc)
   out = patchwork::wrap_elements(plt) +
